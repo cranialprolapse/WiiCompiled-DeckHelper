@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=WiiCompiled DeckHelper
+Comment=Native Mario Kart Wii / Retro Rewind setup for Steam Deck (1.0.0)
+Icon=applications-games
+Terminal=false
+Categories=Game;Utility;
+Exec=sh -c 'd=$(dirname "$1"); chmod +x "$d/WiiCompiled DeckHelper Launcher.sh"; exec "$d/WiiCompiled DeckHelper Launcher.sh"' helper %k
