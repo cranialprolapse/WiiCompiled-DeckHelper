@@ -3,8 +3,8 @@ DECKHELPER_VERSION="1.0.0"
 DECKHELPER_MAINTAINER="cranialprolapse"
 set -Eeuo pipefail
 
-APPIMAGE_URL="https://github.com/theofficialgman/testing/releases/download/gmans-releases/WiiCompiled-Setup-x86_64.AppImage"
-RETRO_URL="https://cdn.update.rwfc.net/RetroRewind/zip/6.12.4-full2.zip"
+WIICOMPILED_RELEASE_API="https://api.github.com/repos/patchzyy/Wiicompiled/releases/latest"
+RETRO_URL="https://update.rwfc.net/RetroRewind/zip/RetroRewind.zip"
 
 STATE_DIR="${HOME}/.config/wiicompile-deckhelper"
 GAME_STATE="${STATE_DIR}/game_path"
@@ -36,7 +36,7 @@ STEAM_MODE_STATE="${STATE_DIR}/steam_integration_mode"
 SUDO_MODE_STATE="${STATE_DIR}/sudo_repair_mode"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKDIR="${SCRIPT_DIR}/Work"
-APPIMAGE="${WORKDIR}/WiiCompiled-Setup-x86_64.AppImage"
+APPIMAGE="${WORKDIR}/WiiCompiled-Setup.AppImage"
 RETRO_ZIP="${WORKDIR}/RetroRewind.zip"
 RETRO_EXTRACT="${WORKDIR}/extracted"
 RETRO_DIR="${RETRO_EXTRACT}/RetroRewind6"
@@ -295,14 +295,19 @@ require_game() {
 }
 
 download_appimage() {
-  if [[ -x "$APPIMAGE" ]]; then
-    ok "WiiCompiled installer already present."
-    return 0
-  fi
+  local asset_url="" arch=""
   progress_local 10 "Downloading WiiCompiled installer"
-  say "Downloading WiiCompiled PR #37 installer"
-  wget -O "$APPIMAGE" "$APPIMAGE_URL"
-  chmod +x "$APPIMAGE"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|aarch64) ;;
+    *) fail "Unsupported CPU architecture for the WiiCompiled AppImage: $arch"; return 1 ;;
+  esac
+  say "Resolving latest official WiiCompiled ${arch} installer"
+  asset_url="$(curl -fsSL "$WIICOMPILED_RELEASE_API" | python3 -c 'import json,sys; d=json.load(sys.stdin); arch=sys.argv[1]; assets=d.get("assets", []); matches=[a["browser_download_url"] for a in assets if "setup" in a.get("name", "").lower() and arch in a.get("name", "").lower() and "appimage" in a.get("name", "").lower()]; print(matches[0] if matches else "")' "$arch")" || { fail "Could not query the latest official WiiCompiled release."; return 1; }
+  [[ -n "$asset_url" ]] || { fail "Could not find an AppImage for $arch in the latest official WiiCompiled release."; return 1; }
+  say "Downloading official WiiCompiled installer: ${asset_url##*/}"
+  curl -fL --progress-bar "$asset_url" -o "$APPIMAGE" || return 1
+  chmod +x "$APPIMAGE" || return 1
   ok "Installer ready: $APPIMAGE"
 }
 
